@@ -174,68 +174,103 @@ def get_municipal_context(vector_store, query):
     return context_list
 
 SYSTEM_PROMPT = """
-Eres BogotAI, un asistente especializado para apoyar al equipo de la Alcaldía de Bogotá. Tu función es proporcionar información precisa basada EXCLUSIVAMENTE en los documentos oficiales, principalmente el Plan de Desarrollo.
+Eres BogotAI, un asistente especializado para apoyar al equipo de la Alcaldía de Bogotá. Tu función es proporcionar información precisa basada en los documentos oficiales, principalmente el Plan de Desarrollo.
+
+MEMORIA DE CONVERSACIÓN:
+- Utiliza el contexto de las preguntas anteriores para enriquecer tus respuestas
+- Haz referencias a información previamente discutida cuando sea relevante
+- Mantén consistencia con las respuestas anteriores
+- Si el usuario hace referencia a algo mencionado antes, reconócelo explícitamente
+
+ESTRUCTURA DEL PLAN DE DESARROLLO:
+El Plan de Desarrollo se organiza jerárquicamente:
+1. OBJETIVOS ESTRATÉGICOS: Son las grandes apuestas de la administración
+2. PROGRAMAS: Cada objetivo se desglosa en programas específicos
+   - Incluyen presupuesto asignado
+   - Tienen indicadores de seguimiento
+3. METAS: Cada programa tiene metas específicas
+   - Se encuentran en "Listado de metas de gobierno"
+   - Columna "Meta Conciliadas ADMIN" contiene las metas oficiales
+   - Tienen indicadores medibles y fechas de cumplimiento
 
 ESTRUCTURA DE RESPUESTA:
-Para cada consulta, debes estructurar tu respuesta de la siguiente manera:
+Adapta tu respuesta según la información disponible, usando SOLO las secciones relevantes:
 
-1. DIAGNÓSTICO 📊
-- Situación actual según los documentos oficiales
+1. CONTEXTO ESTRATÉGICO 🎯
+- Objetivo estratégico relacionado
+- Diagnóstico de la situación
 - Problemáticas identificadas
-- Línea base de indicadores
-[Citar página y documento específico]
+[Solo si hay información disponible]
 
-2. OBJETIVOS Y ESTRATEGIA 🎯
-- Objetivos específicos del Plan de Desarrollo
-- Estrategias planteadas
-- Programas relacionados
-[Citar página y documento específico]
+2. PROGRAMAS Y ACCIONES 📋
+- Programas específicos
+- Acciones principales
+- Articulación con otros programas
+[Solo si hay información disponible]
 
-3. CIFRAS RELEVANTES 📈
-- Indicadores clave
-- Datos de línea base
-- Proyecciones establecidas
-[Citar página y documento específico]
-
-4. METAS ESTRATÉGICAS ⭐
-- Metas específicas del Plan de Desarrollo
+3. METAS E INDICADORES ⭐
+- Metas específicas del "Listado de metas de gobierno"
 - Indicadores de seguimiento
-- Hitos clave
-[Citar página y documento específico]
+- Estado de avance
+[Solo si hay información disponible]
 
-5. PRESUPUESTO 💰
-- Asignación presupuestal
+4. RECURSOS 💰
+- Presupuesto asignado por programa
 - Fuentes de financiación
-- Distribución por componentes
-[Citar página y documento específico]
+- Distribución presupuestal
+[Solo si hay información disponible]
 
-6. DOCUMENTOS DE PLANEACIÓN 📑
-- Referencias a otros documentos oficiales
-- Articulación con otras políticas
-- Marco normativo relacionado
-[Citar documento específico]
-
-Ejemplo de respuesta:
-"Según el Plan de Desarrollo (pág. 45), los objetivos para comedores comunitarios son:
-1. Construcción de 2000 comedores nuevos
-2. Focalización de 30.000 a 20.000 ciudadanos adicionales
-[...]"
-
-## Advertencias y Limitaciones
-
-- Indica claramente cuando la información esté desactualizada
-- SIEMPRE citar la página específica y el documento de donde se obtiene la información
-- NO realizar interpretaciones o inferencias fuera de los documentos
-- Señala áreas donde falten datos o evidencia
-- Especifica cuando las recomendaciones sean preliminares
-- Sugiere la consulta con expertos cuando sea necesaria  
-- Si no tienes informacion sobre algo en especifico, responde con que no tienes suficiente informacion sobre eso o neesitas mas informacion sobre eso. 
-- SIEMPRE RESPONDE EN ESPAÑOL  
+DIRECTRICES IMPORTANTES:
+- OMITE las secciones donde no encuentres información específica
+- NO menciones la falta de información, simplemente enfócate en lo que sí está disponible
+- SIEMPRE cita la página y documento específico para la información proporcionada
+- Mantén un tono profesional pero conversacional
+- Si te saludan o preguntan quién eres, responde de manera concisa
+- SIEMPRE responde en español
 - Mantener la objetividad y ceñirse estrictamente a lo establecido en los documentos
-- Si te saludan "Hola BogotAI" o preguntan quien eres respondeles de manera concisas diciendo quien ers y en que puedes ayudarlos. 
+- Si te saludan "Hola BogotAI" o preguntan quien eres respondeles de manera concisas diciendo quien eres y en que puedes ayudarlos. 
 
 Recuerda: Tu rol es apoyar la toma de decisiones proporcionando información y análisis basado en evidencia, no tomar las decisiones finales.
 """
+
+def initialize_memory():
+    """Inicializa la memoria de conversación"""
+    return ConversationBufferMemory(
+        memory_key="chat_history",
+        return_messages=True,
+        input_key="human_input",
+        output_key="ai_output"
+    )
+    
+def format_context_string(context_list):
+    """
+    Formatea la lista de contextos enfocándose en la estructura del Plan de Desarrollo
+    """
+    if not context_list:
+        return "Contexto del Plan de Desarrollo"
+        
+    formatted_parts = []
+    
+    for item in context_list:
+        # Identificar elementos del Plan de Desarrollo
+        objetivos = re.findall(r'Objetivo[s]?\s*(?:Estratégico)?[s]?:?\s*([^\.]+)', item['content'])
+        programas = re.findall(r'Programa[s]?\s*:?\s*([^\.]+)', item['content'])
+        metas = re.findall(r'Meta[s]?\s*:?\s*([^\.]+)', item['content'])
+        
+        section = f"""
+📚 Fuente: {item['source']}
+
+{format_plan_elements('Objetivos', objetivos)}
+{format_plan_elements('Programas', programas)}
+{format_plan_elements('Metas', metas)}
+
+💡 Contexto adicional:
+{item['content'][:200]}..."""
+        formatted_parts.append(section)
+    
+    return "\n---\n".join(formatted_parts)
+
+
 
 def detect_response_format(prompt):
     """
@@ -478,34 +513,41 @@ def format_references(refs):
         return "• No hay referencias específicas"
     return "\n".join(f"• {ref}" for ref in refs)
 
-def get_chat_response(prompt, vector_store, temperature=0.3):
-    """Genera respuesta considerando el contexto municipal y el formato apropiado"""
+def get_chat_response(prompt, vector_store, memory, temperature=0.3):
+    """Genera respuesta considerando el contexto municipal, el formato adaptativo y la memoria"""
     try:
         response_placeholder = st.empty()
         stream_handler = StreamHandler(response_placeholder)
         
-        # 1. Detectar tipo de consulta
-        query_type = detect_query_type(prompt)
+        # Obtener historia de la conversación
+        chat_history = memory.load_memory_variables({})
         
-        # 2. Obtener y formatear contexto
+        # Obtener y formatear contexto
         context_items = get_municipal_context(vector_store, prompt)
         formatted_context = format_context_string(context_items)
         
-        # 3. Construir prompt mejorado
+        # Construir prompt mejorado con contexto histórico
         enhanced_prompt = f"""
-Tipo de consulta: {query_type}
+HISTORIAL DE CONVERSACIÓN:
+{chat_history.get('chat_history', '')}
 
-Contexto relevante:
+CONSULTA ACTUAL:
+{prompt}
+
+CONTEXTO DISPONIBLE:
 {formatted_context}
 
-Por favor proporciona una respuesta que:
-1. Siga ESTRICTAMENTE la estructura definida (Diagnóstico, Objetivos, Cifras, etc.)
-2. Cite específicamente las páginas y documentos fuente
-3. Se base ÚNICAMENTE en la información disponible en los documentos oficiales
-4. Indique explícitamente cuando no haya información disponible sobre algún aspecto
+INSTRUCCIONES ESPECÍFICAS:
+1. Considera el historial de la conversación para dar contexto a tu respuesta
+2. Estructura tu respuesta usando SOLO las secciones donde tengas información concreta
+3. Cita específicamente las fuentes (página/documento)
+4. Para metas, consulta el "Listado de metas de gobierno" en la columna "Meta Conciliadas ADMIN"
+5. NO menciones cuando no encuentres información sobre algún aspecto
+6. Enfócate en proporcionar información útil y accionable
+7. Haz referencias a información previa cuando sea relevante
 """
         
-        # 4. Generar respuesta
+        # Generar respuesta
         chat_model = ChatOpenAI(
             model="gpt-4o",
             temperature=temperature,
@@ -516,18 +558,28 @@ Por favor proporciona una respuesta que:
         
         messages = [
             SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=f"{prompt}\n\n{enhanced_prompt}")
+            HumanMessage(content=enhanced_prompt)
         ]
         
         response = chat_model.invoke(messages)
+        
+        # Actualizar memoria
+        memory.save_context(
+            {"human_input": prompt},
+            {"ai_output": stream_handler.text}
+        )
+        
         return stream_handler.text
             
     except Exception as e:
         st.error(f"Error generando respuesta: {str(e)}")
         return "Lo siento, ocurrió un error al procesar su solicitud."
-
 def main():
     processor = MunicipalDocumentProcessor()
+    
+    # Inicializar o cargar memoria de sesión
+    if "memory" not in st.session_state:
+        st.session_state.memory = initialize_memory()
     
     if os.path.exists(os.path.join("faiss_index", "index.faiss")):
         vector_store = processor.load_vector_store()
@@ -558,6 +610,12 @@ def main():
         """) 
         temperature = st.slider("Temperatura", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
         
+        # Botón para limpiar el historial
+        if st.button("Limpiar historial de conversación"):
+            st.session_state.messages = []
+            st.session_state.memory = initialize_memory()
+            st.success("Historial limpiado exitosamente")
+        
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -568,8 +626,41 @@ def main():
             st.markdown(prompt)
         
         with st.chat_message("assistant"):
-            response = get_chat_response(prompt, vector_store, temperature)
+            response = get_chat_response(prompt, vector_store, st.session_state.memory, temperature)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
+def format_context_string(context_list):
+    """
+    Formatea la lista de contextos enfocándose en la estructura del Plan de Desarrollo
+    """
+    if not context_list:
+        return "Contexto del Plan de Desarrollo"
+        
+    formatted_parts = []
+    
+    for item in context_list:
+        # Identificar elementos del Plan de Desarrollo
+        objetivos = re.findall(r'Objetivo[s]?\s*(?:Estratégico)?[s]?:?\s*([^\.]+)', item['content'])
+        programas = re.findall(r'Programa[s]?\s*:?\s*([^\.]+)', item['content'])
+        metas = re.findall(r'Meta[s]?\s*:?\s*([^\.]+)', item['content'])
+        
+        section = f"""
+📚 Fuente: {item['source']}
+
+{format_plan_elements('Objetivos', objetivos)}
+{format_plan_elements('Programas', programas)}
+{format_plan_elements('Metas', metas)}
+
+💡 Contexto adicional:
+{item['content'][:200]}..."""
+        formatted_parts.append(section)
+    
+    return "\n---\n".join(formatted_parts)
+
+def format_plan_elements(title, elements):
+    """Formatea elementos del Plan de Desarrollo si están disponibles"""
+    if elements:
+        return f"📋 {title}:\n" + "\n".join(f"• {element.strip()}" for element in elements)
+    return ""
 if __name__ == "__main__":
     main()
