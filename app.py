@@ -593,7 +593,7 @@ def main():
 
     st.write(logo, unsafe_allow_html=True)
     st.title("Alcald-IA", anchor=False)
-    st.markdown("##### Asistente virtual para la toma de decisiones de alto gobierno distrital")
+    st.markdown("##### Asistente virtual para la toma de decisiones del gobierno distrital")
     
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -608,7 +608,7 @@ def main():
         - Evaluación de escenarios 
         - Identificación de patrones y tendencias 
         """) 
-        temperature = st.slider("Temperatura", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
+        temperature = st.slider("Temperatura", min_value=0.1, max_value=1.0, value=0.6, step=0.1)
         
         # Botón para limpiar el historial
         if st.button("Limpiar historial de conversación"):
