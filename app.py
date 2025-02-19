@@ -650,7 +650,7 @@ def main():
         - Evaluación de escenarios 
         - Identificación de patrones y tendencias 
         """) 
-        temperature = st.slider("Temperatura", min_value=0.1, max_value=1.0, value=0.4, step=0.1)
+        temperature = st.slider("Temperatura", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
         
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
