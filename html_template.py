@@ -35,7 +35,7 @@ logo = '''
 <div style="margin-bottom: 15px; text-align: center;">
     <img src="https://seeklogo.com/images/A/alcaldia-mayor-de-bogota-logo-CA468F866B-seeklogo.com.png" 
          alt="Logo Alcaldia BOgota" style="max-width: 18%; height: auto;">
-    <img src="https://i.ibb.co/cgQbQTQ/logo.png" 
+    <img src="https://public.tableau.com/avatar/fd94acf3-58a6-4811-b3fa-94c2662ce866.jpeg"" 
         alt="Logo GOVLAB" style="max-width: 20%; height: auto;">
 </div>
 '''
