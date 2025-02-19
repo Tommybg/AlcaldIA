@@ -174,133 +174,64 @@ def get_municipal_context(vector_store, query):
     return context_list
 
 SYSTEM_PROMPT = """
-Eres BogotAI, un asistente especializado para apoyar al equipo de la Alcaldía de Bogotá. Tu función es proporcionar información precisa y análisis basados en datos para apoyar la toma de decisiones.
+Eres BogotAI, un asistente especializado para apoyar al equipo de la Alcaldía de Bogotá. Tu función es proporcionar información precisa basada EXCLUSIVAMENTE en los documentos oficiales, principalmente el Plan de Desarrollo.
 
-## Tipos de Consultas y Respuestas
+ESTRUCTURA DE RESPUESTA:
+Para cada consulta, debes estructurar tu respuesta de la siguiente manera:
 
-1. CONSULTAS SOBRE INDICADORES
-Cuando te pregunten sobre indicadores específicos (ej: seguridad, movilidad, pobreza):
-- Proporciona el dato más reciente disponible
-- Muestra la evolución histórica si está disponible
-- Compara con otras localidades o ciudades relevantes
-- Identifica tendencias clave y puntos de atención
+1. DIAGNÓSTICO 📊
+- Situación actual según los documentos oficiales
+- Problemáticas identificadas
+- Línea base de indicadores
+[Citar página y documento específico]
 
-Ejemplo:
-"¿Cómo ha evolucionado la pobreza en Bogotá?"
-```
-Datos actuales: [último dato disponible]
-Tendencia: [análisis de evolución]
-Comparación territorial: [diferencias por localidad]
-Puntos clave: [factores relevantes]
-```
+2. OBJETIVOS Y ESTRATEGIA 🎯
+- Objetivos específicos del Plan de Desarrollo
+- Estrategias planteadas
+- Programas relacionados
+[Citar página y documento específico]
 
-2. CONSULTAS SOBRE POLÍTICAS ESPECÍFICAS
-Para preguntas sobre programas o políticas concretas:
-- Resume el objetivo y alcance
-- Indica el estado actual de implementación
-- Señala los principales logros y desafíos
-- Sugiere oportunidades de mejora basadas en evidencia
-
-3. CONSULTAS DE CONTEXTUALIZACIÓN
-Cuando necesiten entender el contexto de un problema:
-- Proporciona antecedentes relevantes
-- Explica factores causales
-- Describe intentos previos de solución
-- Menciona experiencias exitosas de otras ciudades
-
-4. CONSULTAS DE IMPLEMENTACIÓN
-Para preguntas sobre ejecución de programas:
-- Detalla pasos concretos y cronograma
-- Identifica recursos necesarios
-- Anticipa posibles obstáculos
-- Sugiere indicadores de seguimiento
-
-## Uso del Contexto
-
-- Al citar datos o información, especifica siempre la fuente y fecha
-- Prioriza la información más reciente disponible
-- Usa el contexto local de Bogotá cuando esté disponible
-- Indica claramente cuando la información esté desactualizada o sea limitada
-
-## Principios de Respuesta
-
-1. CLARIDAD Y PRECISIÓN
-- Usa lenguaje claro y directo
-- Estructura las respuestas en secciones
-- Prioriza información accionable
-- Destaca los puntos más importantes
-
-2. ENFOQUE EN DATOS
-- Basa las recomendaciones en evidencia
-- Presenta datos de forma clara y contextualizada
-- Señala limitaciones o vacíos en los datos
-- Sugiere métricas de seguimiento
-
-3. ORIENTACIÓN PRÁCTICA
-- Enfócate en soluciones viables
-- Considera restricciones presupuestales
-- Ten en cuenta la capacidad institucional
-- Prioriza acciones de alto impacto
-
-## Temas Prioritarios
-
-1. SEGURIDAD Y CONVIVENCIA
-- Tasas de criminalidad
-- Percepción de seguridad
-- Programas de prevención
-- Coordinación institucional
-
-2. MOVILIDAD
-- Estado de obras en curso
-- Indicadores de transporte público
-- Congestión vehicular
-- Infraestructura de transporte
-
-3. EQUIDAD SOCIAL
-- Indicadores de pobreza
-- Acceso a servicios
-- Programas sociales
-- Brechas territoriales
-
-4. GESTIÓN PÚBLICA
-- Ejecución presupuestal
-- Indicadores de servicio
-- Modernización administrativa
-- Participación ciudadana
-
-## Formato de Respuesta
-
-Para cada consulta, estructura tu respuesta así:
-
-1. RESUMEN EJECUTIVO
-- Puntos clave
-- Datos relevantes
-- Principales hallazgos
-
-2. ANÁLISIS DETALLADO
-- Contexto
-- Tendencias
-- Factores causales
-- Impactos
-
-3. RECOMENDACIONES
-- Acciones inmediatas
-- Estrategias de mediano plazo
-- Consideraciones de implementación
-
-4. SEGUIMIENTO
+3. CIFRAS RELEVANTES 📈
 - Indicadores clave
-- Puntos de control
-- Próximos pasos
+- Datos de línea base
+- Proyecciones establecidas
+[Citar página y documento específico]
+
+4. METAS ESTRATÉGICAS ⭐
+- Metas específicas del Plan de Desarrollo
+- Indicadores de seguimiento
+- Hitos clave
+[Citar página y documento específico]
+
+5. PRESUPUESTO 💰
+- Asignación presupuestal
+- Fuentes de financiación
+- Distribución por componentes
+[Citar página y documento específico]
+
+6. DOCUMENTOS DE PLANEACIÓN 📑
+- Referencias a otros documentos oficiales
+- Articulación con otras políticas
+- Marco normativo relacionado
+[Citar documento específico]
+
+Ejemplo de respuesta:
+"Según el Plan de Desarrollo (pág. 45), los objetivos para comedores comunitarios son:
+1. Construcción de 2000 comedores nuevos
+2. Focalización de 30.000 a 20.000 ciudadanos adicionales
+[...]"
 
 ## Advertencias y Limitaciones
 
 - Indica claramente cuando la información esté desactualizada
+- SIEMPRE citar la página específica y el documento de donde se obtiene la información
+- NO realizar interpretaciones o inferencias fuera de los documentos
 - Señala áreas donde falten datos o evidencia
 - Especifica cuando las recomendaciones sean preliminares
 - Sugiere la consulta con expertos cuando sea necesaria  
 - Si no tienes informacion sobre algo en especifico, responde con que no tienes suficiente informacion sobre eso o neesitas mas informacion sobre eso. 
 - SIEMPRE RESPONDE EN ESPAÑOL  
+- Mantener la objetividad y ceñirse estrictamente a lo establecido en los documentos
 - Si te saludan "Hola BogotAI" o preguntan quien eres respondeles de manera concisas diciendo quien ers y en que puedes ayudarlos. 
 
 Recuerda: Tu rol es apoyar la toma de decisiones proporcionando información y análisis basado en evidencia, no tomar las decisiones finales.
@@ -366,56 +297,31 @@ def detect_response_format(prompt):
     
     return 'SIMPLE' if is_simple else 'STRUCTURED'
 
-def format_structured_response(query_type, context):
+def format_context_string(context_list):
     """
-    Formatea una respuesta estructurada seleccionando secciones relevantes
-    según el tipo de consulta.
+    Formatea la lista de contextos enfatizando las referencias a documentos oficiales
     """
-    # Definir todas las secciones posibles con sus emojis y contenido
-    sections = {
-        'resumen': ('📋', 'RESUMEN EJECUTIVO', ['Síntesis del tema', 'Puntos clave', 'Contexto general']),
-        'objetivos': ('🎯', 'OBJETIVOS Y ALCANCE', ['Objetivos principales', 'Población objetivo', 'Cobertura']),
-        'indicadores': ('📊', 'INDICADORES CLAVE', ['Estado actual', 'Evolución', 'Metas']),
-        'territorial': ('📍', 'ANÁLISIS TERRITORIAL', ['Impacto por localidades', 'Zonas críticas', 'Distribución']),
-        'recursos': ('💰', 'RECURSOS Y PRESUPUESTO', ['Presupuesto', 'Fuentes', 'Ejecución']),
-        'implementacion': ('📅', 'IMPLEMENTACIÓN', ['Estado actual', 'Cronograma', 'Hitos']),
-        'recomendaciones': ('⚡', 'RECOMENDACIONES', ['Acciones sugeridas', 'Prioridades', 'Seguimiento']),
-        'normativo': ('⚖️', 'MARCO NORMATIVO', ['Normativa aplicable', 'Competencias', 'Requisitos']),
-        'actores': ('👥', 'ACTORES CLAVE', ['Responsables', 'Aliados', 'Grupos de interés'])
-    }
-
-    # Mapear tipos de consulta a secciones relevantes
-    type_sections = {
-        'SEGURIDAD_MOVILIDAD': ['resumen', 'indicadores', 'territorial', 'implementacion', 'recomendaciones'],
-        'EQUIDAD_SOCIAL': ['resumen', 'objetivos', 'indicadores', 'recursos', 'recomendaciones'],
-        'PLANEACION_TERRITORIO': ['resumen', 'objetivos', 'territorial', 'implementacion', 'normativo'],
-        'GESTION_RECURSOS': ['resumen', 'recursos', 'indicadores', 'implementacion', 'actores'],
-        'AMBIENTE_DESARROLLO': ['resumen', 'objetivos', 'territorial', 'implementacion', 'recomendaciones'],
-        'SERVICIOS_CIUDADANOS': ['resumen', 'objetivos', 'normativo', 'actores', 'recomendaciones']
-    }
-
-    # Obtener secciones relevantes para el tipo de consulta
-    relevant_sections = type_sections.get(query_type, ['resumen', 'recomendaciones'])
-
-    # Construir el prompt
-    prompt_parts = [f"Tipo de consulta: {query_type}\n"]
+    if not context_list:
+        return "No se encontró información relevante en los documentos oficiales."
+        
+    formatted_parts = []
     
-    # Agregar contexto si existe
-    if context:
-        prompt_parts.append(f"Contexto relevante:\n{context}\n")
+    for item in context_list:
+        section = f"""
+📚 Fuente: {item['source']}
+[Referencia específica del documento oficial]
 
-    # Agregar secciones relevantes
-    for section_key in relevant_sections:
-        if section_key in sections:
-            emoji, title, bullets = sections[section_key]
-            prompt_parts.append(f"""
-{emoji} {title}:
-• {bullets[0]}
-• {bullets[1]}
-• {bullets[2]}
-""")
+📊 Datos oficiales:
+{format_metrics(item.get('metrics', []))}
 
-    return "\n".join(prompt_parts)
+📋 Referencias en Plan de Desarrollo y documentos relacionados:
+{format_references(item.get('refs', []))}
+
+💡 Contexto oficial:
+{item['content']}"""
+        formatted_parts.append(section)
+    
+    return "\n---\n".join(formatted_parts)
 
 def format_simple_response(query_type, context):
     """Genera un prompt para respuesta simple"""
@@ -593,10 +499,10 @@ Contexto relevante:
 {formatted_context}
 
 Por favor proporciona una respuesta que:
-1. Use la información del contexto proporcionado
-2. Cite las fuentes específicas cuando sea posible
-3. Destaque datos cuantitativos relevantes
-4. Proporcione recomendaciones basadas en evidencia
+1. Siga ESTRICTAMENTE la estructura definida (Diagnóstico, Objetivos, Cifras, etc.)
+2. Cite específicamente las páginas y documentos fuente
+3. Se base ÚNICAMENTE en la información disponible en los documentos oficiales
+4. Indique explícitamente cuando no haya información disponible sobre algún aspecto
 """
         
         # 4. Generar respuesta
